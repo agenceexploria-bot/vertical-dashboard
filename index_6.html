@@ -101,6 +101,7 @@ function planPDF(p){
   const pw=window.open('','_blank');
   if(!pw){alert('Autorisez les popups pour imprimer');return;}
   const fmtE=new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const today=new Date();
   let mn=null,mx=null;
   AE.forEach(e=>{const d=p.dates[e.k];if(!d)return;const db=pD(d.debut),fn=pD(d.fin);if(db&&(!mn||db<mn))mn=db;if(fn&&(!mx||fn>mx))mx=fn;});
@@ -110,16 +111,16 @@ function planPDF(p){
   const mos=[];const mc=new Date(gs.getFullYear(),gs.getMonth(),1);
   while(mc<ge){const nl=new Date(mc.getFullYear(),mc.getMonth()+1,1);mos.push({l:mc.toLocaleDateString("fr-FR",{month:"short",year:"2-digit"}),lp:pct(mc),wp:pct(nl)-pct(mc)});mc.setMonth(mc.getMonth()+1);}
   const bars=AE.map(et=>{const d=p.dates[et.k];const db=d?.debut?pD(d.debut):null;const fn=d?.fin?pD(d.fin):null;const bar=db&&fn?`<div style="position:absolute;left:${pct(db)}%;width:${Math.max(0.5,pct(new Date(fn.getTime()+86400000))-pct(db))}%;top:6px;height:14px;background:${et.ph.co};opacity:${d.done?1:0.65};border-radius:3px"></div>`:'';return `<div style="height:26px;position:relative;border-bottom:1px solid #f1f5f9">${bar}</div>`;}).join('');
-  const rows=AE.map((et,i)=>{const d=p.dates[et.k];const db=d?.debut?pD(d.debut):null;const fn=d?.fin?pD(d.fin):null;const has=d?.debut||d?.fin;return `<tr style="background:${i%2===0?'white':'#fafafa'}"><td style="padding:4px 8px;border:1px solid #e2e8f0"><span style="display:inline-block;width:7px;height:7px;border-radius:1px;background:${et.ph.co};margin-right:5px;vertical-align:middle"></span><strong>Étape ${et.ph.n}</strong> · ${et.lb}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;color:${has?'#374151':'#9ca3af'}">${d?.debut||'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;color:${has?'#374151':'#9ca3af'}">${d?.fin||'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#6b7280">${db?'S'+iWk(db):'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#6b7280">${fn?'S'+iWk(fn):'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;color:${d?.done?'#16a34a':'#f97316'};font-weight:600">${d?.done?'✓ Réalisé':has?'Planifié':'—'}</td></tr>`;}).join('');
+  const rows=AE.map((et,i)=>{const d=p.dates[et.k];const db=d?.debut?pD(d.debut):null;const fn=d?.fin?pD(d.fin):null;const has=d?.debut||d?.fin;return `<tr style="background:${i%2===0?'white':'#fafafa'}"><td style="padding:4px 8px;border:1px solid #e2e8f0"><span style="display:inline-block;width:7px;height:7px;border-radius:1px;background:${et.ph.co};margin-right:5px;vertical-align:middle"></span><strong>Étape ${et.ph.n}</strong> · ${esc(et.lb)}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;color:${has?'#374151':'#9ca3af'}">${esc(d?.debut||'—')}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;color:${has?'#374151':'#9ca3af'}">${esc(d?.fin||'—')}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#6b7280">${db?'S'+iWk(db):'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;font-weight:600;color:#6b7280">${fn?'S'+iWk(fn):'—'}</td><td style="padding:4px 8px;border:1px solid #e2e8f0;text-align:center;color:${d?.done?'#16a34a':'#f97316'};font-weight:600">${d?.done?'✓ Réalisé':has?'Planifié':'—'}</td></tr>`;}).join('');
   const css=`*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:system-ui,sans-serif;padding:0}@page{size:A4 landscape;margin:10mm 12mm}`;
   pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>${css}</style></head><body style="padding:14px 16px;font-size:11px">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:3px solid #dc2626">
     <div>
       <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">▐ Vertical Montecharge — Planning prévisionnel</div>
-      <div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:5px">${p.nom}</div>
+      <div style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:5px">${esc(p.nom)}</div>
       <div style="display:flex;gap:16px;font-size:11px;color:#6b7280;flex-wrap:wrap">
-        <span><strong style="color:#374151">Client :</strong> ${p.client}</span>
-        <span><strong style="color:#374151">Réf. :</strong> ${p.id}</span>
+        <span><strong style="color:#374151">Client :</strong> ${esc(p.client)}</span>
+        <span><strong style="color:#374151">Réf. :</strong> ${esc(p.id)}</span>
         <span style="color:#dc2626"><strong>Montant HT :</strong> <strong>${fmtE.format(p.montant)}</strong></span>
       </div>
     </div>
@@ -290,7 +291,7 @@ function App({role,userEmail,onLogout}){
   const dbDelete=useCallback((tbl,id)=>{if(!supa)return;supa.from(tbl).delete().eq("id",id).then(({error})=>{if(error)console.error(tbl,error);});},[]);
   const dbBulk=useCallback((tbl,rows)=>{if(!supa||!rows.length)return;supa.from(tbl).upsert(rows).then(({error})=>{if(error)console.error(tbl,error);});},[]);
   const upPl=u=>{if(u.id.startsWith("__PD__")){const rid=u.id.replace("__PD__","");sPP(prev=>prev.filter(p=>p.id!==rid));dbDelete("planning",rid);}else{sPP(prev=>prev.map(p=>p.id===u.id?u:p));dbUpsert("planning",u.id,u);}};
-  const impPl=useCallback(e=>{const f=e.target.files?.[0];if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:"greedy",complete:r=>{const nm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");const pk=(row,...c)=>{for(const x of c){const fk=Object.keys(row).find(k=>nm(k)===nm(x));if(fk&&row[fk]?.toString().trim())return row[fk].toString().trim();}return "";};const imp=r.data.map(row=>{const id=pk(row,"Lead Number","Numéro","N° de vente","reference","id");const nom=pk(row,"Opportunité","Description","Désignation","Objet","nom","name")||id;const cl=pk(row,"Nom de la société","Client","Partenaire","Société","client");const vi=pk(row,"Ville","ville");const mt=parseFloat(pk(row,"Total HT","Montant HT","montant","amount").replace(/[^\d.,]/g,"").replace(",","."))||0;const dM=pk(row,"Date mise en service","Date MES");const dates={};if(dM&&pD(dM))dates.mise_en_service={debut:dM,fin:dM,done:false};return{id:id||`LD-manual`,nom,client:vi?`${cl} · ${vi}`:cl,montant:mt,dates};}).filter(p=>p.nom||p.client);sPP(prev=>{const ids=new Set(prev.map(p=>p.id));const add=imp.filter(p=>!ids.has(p.id));alert(`${add.length} projet(s) ajouté(s) sur ${imp.length} ligne(s)`);dbBulk("planning",add.map(p=>({id:p.id,data:p})));return[...prev,...add];});}});e.target.value="";},[dbBulk]);
+  const impPl=useCallback(e=>{const f=e.target.files?.[0];if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:"greedy",complete:r=>{const nm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");const pk=(row,...c)=>{for(const x of c){const fk=Object.keys(row).find(k=>nm(k)===nm(x));if(fk&&row[fk]?.toString().trim())return row[fk].toString().trim();}return "";};const imp=r.data.map((row,i)=>{const id=pk(row,"Lead Number","Numéro","N° de vente","reference","id");const nom=pk(row,"Opportunité","Description","Désignation","Objet","nom","name")||id;const cl=pk(row,"Nom de la société","Client","Partenaire","Société","client");const vi=pk(row,"Ville","ville");const mt=parseFloat(pk(row,"Total HT","Montant HT","montant","amount").replace(/[^\d.,]/g,"").replace(",","."))||0;const dM=pk(row,"Date mise en service","Date MES");const dates={};if(dM&&pD(dM))dates.mise_en_service={debut:dM,fin:dM,done:false};return{id:id||`LD-manual-${i}`,nom,client:vi?`${cl} · ${vi}`:cl,montant:mt,dates};}).filter(p=>p.nom||p.client);sPP(prev=>{const ids=new Set(prev.map(p=>p.id));const add=imp.filter(p=>!ids.has(p.id));alert(`${add.length} projet(s) ajouté(s) sur ${imp.length} ligne(s)`);dbBulk("planning",add.map(p=>({id:p.id,data:p})));return[...prev,...add];});}});e.target.value="";},[dbBulk]);
   const txC=k=>sXC(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
   const txFY=k=>sXFY(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
   const tgM=m=>sMFs(p=>{const n=new Set(p);n.has(m)?n.delete(m):n.add(m);return n;});
@@ -639,7 +640,7 @@ function Root(){
   },[]);
   useEffect(()=>{if(!session){sRole(null);return;}(async()=>{
     const{data}=await supa.from("profiles").select("role").eq("id",session.user.id).single();
-    sRole(data?.role||"collaborateur");
+    sRole(data?.role||"lecteur"); // défaut le plus restreint si le profil est absent
   })();},[session]);
   if(!supa)return <div style={{padding:40}}>Supabase non configuré.</div>;
   if(session===undefined)return <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#64748b"}}>Chargement…</div>;
