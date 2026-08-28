@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.6/babel.min.js" onerror="showErr('Babel non chargé')"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" onerror="showErr('Chart.js non chargé — rechargez (F5)')"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" onerror="showErr('PapaParse non chargé')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="showErr('Supabase non chargé')"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f0f4f8}select,input,button{font-family:inherit}
 @media print{.np{display:none!important}body{background:white!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}#AR{height:auto!important;overflow:visible!important;display:block!important}#AC{height:auto!important;overflow:visible!important;flex:none!important;max-height:none!important;padding:8px!important}.ph{display:flex!important}table{page-break-inside:auto}tr{page-break-inside:avoid}}
@@ -22,6 +23,14 @@
 <script type="text/babel">
 const {useState,useMemo,useEffect,useCallback,useRef}=React;
 if(typeof Chart==='undefined'){showErr('Chart.js non chargé — rechargez (F5)');throw new Error('Chart missing');}
+// ═══════════════════════════════════════════════════════════════
+// CONFIG SUPABASE — remplace les 2 valeurs ci-dessous par les tiennes
+// (Supabase → Project Settings → API : Project URL + anon public key)
+// ═══════════════════════════════════════════════════════════════
+const SUPA_URL="https://pqqjdhwojcnvzmocxfwn.supabase.co";
+const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxcWpkaHdvamNudnptb2N4ZnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjkxMTAsImV4cCI6MjEwMzQwNTExMH0.-_iL72fTPnQFc3kk3LW4YVrBlc_WhDxR2X9VV4et3Ok";
+const supa=(typeof supabase!=='undefined')?supabase.createClient(SUPA_URL,SUPA_ANON):null;
+if(!supa)showErr('Supabase non initialisé — vérifie SUPA_URL / SUPA_ANON et le script @supabase/supabase-js');
 function ChartBox({cfg,h,ck}){
   const ref=useRef(null),ch=useRef(null);
   useEffect(()=>{if(!ref.current)return;ch.current?.destroy();ch.current=new Chart(ref.current,cfg);return()=>{ch.current?.destroy();};},[ck]);
@@ -66,12 +75,9 @@ const stg=(nr["etape"]||nr["pipeline_stages"]||"").toLowerCase();
 const solde=stg.includes("sold");
 return{ld,client:nr["nom_de_la_societe"]||"",ville:vi,dept,ca:parseFloat((nr["total_ht"]||"0").replace(/[^0-9.]/g,""))||0,dateMES:dm.length>=8?dm:"",previPose:parseFloat((nr["dont_pose"]||"0").replace(/[^0-9.]/g,""))||0,solde};}).filter(Boolean);}
 function SB({pv,rv}){if(!pv)return <span style={{background:"#fef3c7",color:"#92400e",padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:700}}>En attente</span>;if(rv===true)return <span style={{background:"#fee2e2",color:"#991b1b",padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:700}}>⚠ Réserves</span>;return <span style={{background:"#dcfce7",color:"#14532d",padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:700}}>✓ Sans réserve</span>;}
-const iP=()=>{try{const s=localStorage.getItem("vp");if(s)return JSON.parse(s);}catch(e){}return[];};
-const iO=()=>{try{const s=localStorage.getItem("vo");if(s)return JSON.parse(s);}catch(e){}return[];};
 // ═══════════════════════════════════════════════════════════════
 // BLOC A — Coller JUSTE AVANT la ligne : function App(){
 // ═══════════════════════════════════════════════════════════════
-
 const PH=[
   {n:1,lb:"Admin.",fl:"Formalités administratives",co:"#f97316",et:[{k:"formalites_admin",lb:"Formalités admin."}]},
   {n:2,lb:"Études",fl:"Études",co:"#3b82f6",et:[{k:"etudes",lb:"Études"}]},
@@ -90,7 +96,6 @@ const WW=50,RH=44;
 const bWk=ps=>{let mn=null,mx=null;ps.forEach(p=>AE.forEach(e=>{const d=p.dates[e.k];if(!d)return;const db=pD(d.debut),fn=pD(d.fin);if(db&&(!mn||db<mn))mn=db;if(fn&&(!mx||fn>mx))mx=fn;}));const n=new Date();const s=mnd(new Date((mn||new Date(n.getFullYear(),n.getMonth()-1,1)).getTime()-7*86400000));const en=new Date((mx||new Date(n.getFullYear(),n.getMonth()+5,1)).getTime()+21*86400000);const w=[];const c=new Date(s);while(c<=en){w.push(new Date(c));c.setDate(c.getDate()+7);}return w;};
 const mGrp=wk=>{const g=[];wk.forEach(w=>{const lb=w.toLocaleDateString("fr-FR",{month:"short",year:"2-digit"});const l=g[g.length-1];if(l&&l.lb===lb)l.ct++;else g.push({lb,yr:w.getFullYear(),mo:w.getMonth(),ct:1});});return g;};
 const dX=(wk,d)=>{for(let i=0;i<wk.length;i++){const nx=new Date(wk[i]);nx.setDate(nx.getDate()+7);if(d>=wk[i]&&d<nx)return i*WW+((d.getDay()+6)%7)/7*WW;}return wk.length>0&&d<wk[0]?0:wk.length*WW;};
-
 // ── PDF planning par projet ──────────────────────────────────
 function planPDF(p){
   const pw=window.open('','_blank');
@@ -157,7 +162,6 @@ function planPDF(p){
   </body></html>`);
   pw.document.close();pw.focus();setTimeout(()=>{pw.print();pw.close();},700);
 }
-
 // ── Panneau d'édition d'un projet ───────────────────────────
 function PE({p,onS,onC,onD}){
   const [f,sF]=useState(JSON.parse(JSON.stringify(p)));
@@ -170,7 +174,7 @@ function PE({p,onS,onC,onD}){
       <div style={{display:"flex",gap:5,marginLeft:"auto"}}>
         <button onClick={()=>onS(f)} style={{fontSize:12,fontWeight:700,background:"#f97316",color:"white",border:"none",borderRadius:6,padding:"6px 14px",cursor:"pointer"}}>✓ OK</button>
         <button onClick={onC} style={{fontSize:12,border:"1px solid #d1d5db",borderRadius:6,padding:"6px 10px",cursor:"pointer",background:"white"}}>✕</button>
-        <button onClick={()=>{if(confirm("Supprimer ?"))onD(f.id);}} style={{fontSize:11,border:"none",borderRadius:6,padding:"6px 8px",cursor:"pointer",color:"#ef4444",background:"transparent"}}>🗑</button>
+        {onD&&<button onClick={()=>{if(confirm("Supprimer ?"))onD(f.id);}} style={{fontSize:11,border:"none",borderRadius:6,padding:"6px 8px",cursor:"pointer",color:"#ef4444",background:"transparent"}}>🗑</button>}
       </div>
     </div>
     <div style={{display:"grid",gap:8,gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))"}}>
@@ -193,9 +197,8 @@ function PE({p,onS,onC,onD}){
     </div>
   </div>;
 }
-
 // ── Vue Gantt ────────────────────────────────────────────────
-function PG({ps,onU}){
+function PG({ps,onU,canEdit,canDelete}){
   const [eId,sE]=useState(null),[lW,sL]=useState(200);
   const oRz=e=>{e.preventDefault();const sx=e.clientX,sw=lW;const oM=ev=>sL(Math.max(100,Math.min(400,sw+(ev.clientX-sx))));const oU=()=>{document.removeEventListener("mousemove",oM);document.removeEventListener("mouseup",oU);};document.addEventListener("mousemove",oM);document.addEventListener("mouseup",oU);};
   const td=new Date();td.setHours(0,0,0,0);
@@ -220,7 +223,7 @@ function PG({ps,onU}){
           {isLt(p)&&<span title="En retard" style={{fontSize:12}}>⚠️</span>}
           {gCE(p)===null&&<span title="Terminé" style={{fontSize:12}}>✅</span>}
           <button onClick={()=>planPDF(p)} title="Imprimer le planning PDF" style={{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"#9ca3af",padding:2}}>📄</button>
-          <button onClick={()=>sE(ed?null:p.id)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,color:ed?"#f97316":"#9ca3af",padding:2}}>{ed?"✕":"✎"}</button>
+          {canEdit&&<button onClick={()=>sE(ed?null:p.id)} style={{border:"none",background:"none",cursor:"pointer",fontSize:13,color:ed?"#f97316":"#9ca3af",padding:2}}>{ed?"✕":"✎"}</button>}
         </div>;})}
       </div>
       <div onMouseDown={oRz} style={{width:5,flexShrink:0,cursor:"col-resize",background:"#e5e7eb",userSelect:"none"}} onMouseEnter={e=>e.currentTarget.style.background="#f97316"} onMouseLeave={e=>e.currentTarget.style.background="#e5e7eb"}/>
@@ -240,48 +243,70 @@ function PG({ps,onU}){
         </div>
       </div>
     </div>
-    {ep&&<PE p={ep} onS={u=>{onU(u);sE(null);}} onC={()=>sE(null)} onD={id=>{onU({...ep,id:"__PD__"+id});sE(null);}}/>}
+    {ep&&<PE p={ep} onS={u=>{onU(u);sE(null);}} onC={()=>sE(null)} onD={canDelete?(id=>{onU({...ep,id:"__PD__"+id});sE(null);}):null}/>}
     <p style={{fontSize:10,color:"#94a3b8",marginTop:6,textAlign:"center"}}>Trié par date MES · ↔ redimensionner · 📄 PDF · ✎ modifier</p>
   </div>;
 }
-function App(){
+function App({role,userEmail,onLogout}){
+  const isAdmin=role==="admin";
+  const isViewer=role==="lecteur"; // accès visualisation seule
+  const canEditOtifiq=!isViewer; // admin ET collaborateur remplissent l'OTIFIQ ; le lecteur non
   const [tab,sTab]=useState("pv"),[pvF,sPvF]=useState("tous"),[rvF,sRvF]=useState("tous"),[srch,sSrch]=useState("");
   const [mFs,sMFs]=useState(new Set());
   const [oSrch,sOSrch]=useState(""),[oMFs,sOMFs]=useState(new Set()),[inclFut,sInclFut]=useState(false);
   const [xC,sXC]=useState(new Set(["c1","fourni"])),[xFY,sXFY]=useState(()=>new Set([gFY(new Date())]));
   const [sF,sSF]=useState("dateMES"),[sD,sSD]=useState("asc"),[ep,sEp]=useState(null),[editMES,sEMES]=useState(null);
   const [lastI,sLI]=useState(""),[msg,sMsg]=useState(""),[showI,sSI]=useState(false),[showPrint,sShowPrint]=useState(false);
-  const cFY=gFY(new Date()),[PS,sPS]=useState(iP),[OE,sOE]=useState(iO);
-  const iPl=()=>{try{const s=localStorage.getItem("vpl");if(s)return JSON.parse(s);}catch(e){}return[];};
-  const [PP,sPP]=useState(iPl);
-  useEffect(()=>{try{localStorage.setItem("vpl",JSON.stringify(PP));}catch(e){}},[PP]);
-  useEffect(()=>{if(!PS.length&&!OE.length&&!PP.length)return;const d={projects:PS,otifiq:OE,planning:PP,exportDate:new Date().toISOString()};fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":JBIN_KEY},body:JSON.stringify(d)}).catch(()=>{});},[PS,OE,PP]);  const [pAdd,sPAdd]=useState(false),[pNew,sPNew]=useState({id:"",nom:"",client:"",montant:""});
+  const cFY=gFY(new Date()),[PS,sPS]=useState([]),[OE,sOE]=useState([]),[PP,sPP]=useState([]);
+  const [loaded,sLoaded]=useState(false);
+  const [pAdd,sPAdd]=useState(false),[pNew,sPNew]=useState({id:"",nom:"",client:"",montant:""});
   const plRef=useRef(null);
-  const upPl=u=>{if(u.id.startsWith("__PD__"))sPP(prev=>prev.filter(p=>p.id!==u.id.replace("__PD__","")));else sPP(prev=>prev.map(p=>p.id===u.id?u:p));};
-  const impPl=useCallback(e=>{const f=e.target.files?.[0];if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:"greedy",complete:r=>{const nm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");const pk=(row,...c)=>{for(const x of c){const fk=Object.keys(row).find(k=>nm(k)===nm(x));if(fk&&row[fk]?.toString().trim())return row[fk].toString().trim();}return "";};const imp=r.data.map(row=>{const id=pk(row,"Lead Number","Numéro","N° de vente","reference","id");const nom=pk(row,"Opportunité","Description","Désignation","Objet","nom","name")||id;const cl=pk(row,"Nom de la société","Client","Partenaire","Société","client");const vi=pk(row,"Ville","ville");const mt=parseFloat(pk(row,"Total HT","Montant HT","montant","amount").replace(/[^\d.,]/g,"").replace(",","."))||0;const dM=pk(row,"Date mise en service","Date MES");const dates={};if(dM&&pD(dM))dates.mise_en_service={debut:dM,fin:dM,done:false};return{id:id||`LD-${Date.now()}`,nom,client:vi?`${cl} · ${vi}`:cl,montant:mt,dates};}).filter(p=>p.nom||p.client);sPP(prev=>{const ids=new Set(prev.map(p=>p.id));const add=imp.filter(p=>!ids.has(p.id));alert(`${add.length} projet(s) ajouté(s) sur ${imp.length} ligne(s)`);return[...prev,...add];});}});e.target.value="";},[]);
-  useEffect(()=>{try{localStorage.setItem("vp",JSON.stringify(PS));}catch(e){}},[PS]);
-  useEffect(()=>{try{localStorage.setItem("vo",JSON.stringify(OE));}catch(e){}},[OE]);
-const JBIN_ID="6a423bfeda38895dfe0f1289";
-const JBIN_KEY="$2a$10$JMGqGX0yozYMyOrukfFh3eoglXO/j47kRP1rfhWI4VoQHKKmUf4TC";
-useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"X-Master-Key":JBIN_KEY}}).then(r=>r.json()).then(r=>{const d=r.record||{};if(d.projects)sPS(d.projects);if(d.otifiq)sOE(d.otifiq);if(d.planning)sPP(d.planning);}).catch(()=>{});},[]);
+  // ─── Chargement initial depuis Supabase ───
+  useEffect(()=>{if(!supa)return;(async()=>{
+    try{
+      const[a,o,pl]=await Promise.all([
+        supa.from("affaires").select("*"),
+        supa.from("otifiq").select("*"),
+        supa.from("planning").select("*"),
+      ]);
+      if(a.data)sPS(a.data.map(r=>r.data));
+      if(o.data)sOE(o.data.map(r=>r.data));
+      if(pl.data)sPP(pl.data.map(r=>r.data));
+    }catch(e){sMsg("⚠️ Chargement Supabase KO");}
+    sLoaded(true);
+  })();},[]);
+  // ─── Temps réel : recharge la table concernée à chaque changement distant ───
+  useEffect(()=>{if(!supa)return;
+    const reload=async(tbl,setter)=>{const{data}=await supa.from(tbl).select("*");if(data)setter(data.map(r=>r.data));};
+    const ch=supa.channel("rt")
+      .on("postgres_changes",{event:"*",schema:"public",table:"affaires"},()=>reload("affaires",sPS))
+      .on("postgres_changes",{event:"*",schema:"public",table:"otifiq"},()=>reload("otifiq",sOE))
+      .on("postgres_changes",{event:"*",schema:"public",table:"planning"},()=>reload("planning",sPP))
+      .subscribe();
+    return()=>{supa.removeChannel(ch);};
+  },[]);
+  // ─── Écritures granulaires (upsert / delete par ligne) ───
+  const dbUpsert=useCallback((tbl,id,data)=>{if(!supa)return;supa.from(tbl).upsert({id,data}).then(({error})=>{if(error)console.error(tbl,error);});},[]);
+  const dbDelete=useCallback((tbl,id)=>{if(!supa)return;supa.from(tbl).delete().eq("id",id).then(({error})=>{if(error)console.error(tbl,error);});},[]);
+  const dbBulk=useCallback((tbl,rows)=>{if(!supa||!rows.length)return;supa.from(tbl).upsert(rows).then(({error})=>{if(error)console.error(tbl,error);});},[]);
+  const upPl=u=>{if(u.id.startsWith("__PD__")){const rid=u.id.replace("__PD__","");sPP(prev=>prev.filter(p=>p.id!==rid));dbDelete("planning",rid);}else{sPP(prev=>prev.map(p=>p.id===u.id?u:p));dbUpsert("planning",u.id,u);}};
+  const impPl=useCallback(e=>{const f=e.target.files?.[0];if(!f)return;Papa.parse(f,{header:true,skipEmptyLines:"greedy",complete:r=>{const nm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");const pk=(row,...c)=>{for(const x of c){const fk=Object.keys(row).find(k=>nm(k)===nm(x));if(fk&&row[fk]?.toString().trim())return row[fk].toString().trim();}return "";};const imp=r.data.map(row=>{const id=pk(row,"Lead Number","Numéro","N° de vente","reference","id");const nom=pk(row,"Opportunité","Description","Désignation","Objet","nom","name")||id;const cl=pk(row,"Nom de la société","Client","Partenaire","Société","client");const vi=pk(row,"Ville","ville");const mt=parseFloat(pk(row,"Total HT","Montant HT","montant","amount").replace(/[^\d.,]/g,"").replace(",","."))||0;const dM=pk(row,"Date mise en service","Date MES");const dates={};if(dM&&pD(dM))dates.mise_en_service={debut:dM,fin:dM,done:false};return{id:id||`LD-manual`,nom,client:vi?`${cl} · ${vi}`:cl,montant:mt,dates};}).filter(p=>p.nom||p.client);sPP(prev=>{const ids=new Set(prev.map(p=>p.id));const add=imp.filter(p=>!ids.has(p.id));alert(`${add.length} projet(s) ajouté(s) sur ${imp.length} ligne(s)`);dbBulk("planning",add.map(p=>({id:p.id,data:p})));return[...prev,...add];});}});e.target.value="";},[dbBulk]);
   const txC=k=>sXC(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
   const txFY=k=>sXFY(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
   const tgM=m=>sMFs(p=>{const n=new Set(p);n.has(m)?n.delete(m):n.add(m);return n;});
   const tgOM=m=>sOMFs(p=>{const n=new Set(p);n.has(m)?n.delete(m):n.add(m);return n;});
-  const upO=(ld,f,v)=>sOE(p=>p.map(e=>e.ld===ld?{...e,[f]:v}:e));
-  const upMES=(ld,d)=>{sPS(prev=>prev.map(p=>p.ld===ld?{...p,dateMES:d}:p));const m=gML(d);if(m)sOE(prev=>prev.map(o=>o.ld===ld?{...o,mois:m}:o));sPP(prev=>prev.map(p=>p.id===ld?{...p,dates:{...p.dates,mise_en_service:{...(p.dates.mise_en_service||{}),debut:d,fin:d}}}:p));};
-  const saveE=u=>{sPS(p=>p.map(x=>x.ld===u.ld?u:x));sEp(null);};
+  const upO=(ld,f,v)=>sOE(p=>{const nx=p.map(e=>e.ld===ld?{...e,[f]:v}:e);const row=nx.find(e=>e.ld===ld);if(row)dbUpsert("otifiq",ld,row);return nx;});
+  const upMES=(ld,d)=>{sPS(prev=>{const nx=prev.map(p=>p.ld===ld?{...p,dateMES:d}:p);const row=nx.find(p=>p.ld===ld);if(row)dbUpsert("affaires",ld,row);return nx;});const m=gML(d);if(m)sOE(prev=>{const nx=prev.map(o=>o.ld===ld?{...o,mois:m}:o);const row=nx.find(o=>o.ld===ld);if(row)dbUpsert("otifiq",ld,row);return nx;});sPP(prev=>{const nx=prev.map(p=>p.id===ld?{...p,dates:{...p.dates,mise_en_service:{...(p.dates.mise_en_service||{}),debut:d,fin:d}}}:p);const row=nx.find(p=>p.id===ld);if(row)dbUpsert("planning",ld,row);return nx;});};
+  const saveE=u=>{sPS(p=>p.map(x=>x.ld===u.ld?u:x));dbUpsert("affaires",u.ld,u);sEp(null);};
   const hSort=f=>{if(sF===f)sSD(d=>d==="asc"?"desc":"asc");else{sSF(f);sSD("asc");}};
   const si=f=>sF===f?(sD==="asc"?" ↑":" ↓"):" ↕";
-  const expJSON=()=>{const d={projects:PS,otifiq:OE,planning:PP,exportDate:new Date().toISOString()};fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}`,{method:"PUT",headers:{"Content-Type":"application/json","X-Master-Key":JBIN_KEY},body:JSON.stringify(d)}).catch(()=>{});const b=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="data.json";a.click();URL.revokeObjectURL(u);};
-  const impJSON=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.projects)sPS(d.projects);if(d.otifiq)sOE(d.otifiq);if(d.planning)sPP(d.planning);sMsg("✓ "+((d.projects||[]).length)+" affaires");}catch(x){sMsg("⚠️ JSON invalide");}setTimeout(()=>sMsg(""),4000);};r.readAsText(f);e.target.value="";};
-  const resetAll=()=>{if(!window.confirm("Effacer TOUTES les données du dashboard ?\n(Exportez le JSON avant si vous voulez garder les données OTIFIQ)"))return;localStorage.removeItem("vp");localStorage.removeItem("vo");sPS([]);sOE([]);sLI("");sMsg("✓ Cache vidé — réimportez votre CSV");setTimeout(()=>sMsg(""),5000);};
-  const procF=useCallback(f=>{if(!f)return;if(f.name.match(/\.xlsx?$/i)){sMsg("⚠️ xlsx non supporté");return;}const r=new FileReader();r.onload=ev=>{const imp=parseCSV(ev.target.result);if(!imp.length){sMsg("⚠️ Aucune affaire LD");return;}let upd=0,add=0,oA=0;sPS(prev=>{const nx=[...prev];imp.forEach(i=>{const idx=nx.findIndex(x=>x.ld===i.ld);if(idx>=0){nx[idx]={...nx[idx],client:i.client||nx[idx].client,ville:i.ville||nx[idx].ville,dept:i.dept||nx[idx].dept,ca:i.ca||nx[idx].ca,dateMES:i.dateMES||nx[idx].dateMES,previPose:i.previPose||nx[idx].previPose,solde:i.solde};upd++;}else{nx.push({ld:i.ld,client:i.client,ville:i.ville,dept:i.dept||"",ca:i.ca,dateMES:i.dateMES,pvRecu:false,reserves:null,installateur:"",installateurLibre:"",previPose:i.previPose||0,reelPose:0,notes:"",solde:i.solde??false});add++;}});return nx;});sOE(prev=>{const nx=[...prev];imp.forEach(i=>{if(!i.dateMES)return;const m=gML(i.dateMES);if(!m)return;const ex=nx.find(o=>o.ld===i.ld);if(!ex){nx.push({ld:i.ld,client:i.client||"",mois:m,onTime:false,sansReserves:false,fournisseur:"",fournisseurLibre:"",fournOT:false,fournIF:false,fournIQ:false,notes:""});oA++;}else if(ex.mois!==m){const idx=nx.indexOf(ex);nx[idx]={...ex,mois:m};}});return nx;});sPP(prev=>{const nx=[...prev];imp.forEach(i=>{if(!i.ld)return;const idx=nx.findIndex(x=>x.id===i.ld);if(idx>=0){nx[idx]={...nx[idx],client:i.client||nx[idx].client,montant:i.ca||nx[idx].montant};if(i.dateMES&&pD(i.dateMES)&&!nx[idx].dates.mise_en_service){nx[idx]={...nx[idx],dates:{...nx[idx].dates,mise_en_service:{debut:i.dateMES,fin:i.dateMES,done:false}}};}}else{const dates={};if(i.dateMES&&pD(i.dateMES))dates.mise_en_service={debut:i.dateMES,fin:i.dateMES,done:false};nx.push({id:i.ld,nom:(i.client||i.ld)+(i.ville?" · "+i.ville:""),client:i.client||"",montant:i.ca||0,dates});}});return nx;});sLI(new Date().toLocaleString("fr-FR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}));sMsg("✓ "+upd+" màj · "+add+" nouvelles · "+oA+" OTIFIQ");setTimeout(()=>{sMsg("");sSI(false);},6000);};r.readAsText(f,"UTF-8");},[]);
+  const expJSON=()=>{const d={projects:PS,otifiq:OE,planning:PP,exportDate:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:"application/json"});const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="data.json";a.click();URL.revokeObjectURL(u);};
+  const impJSON=e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.projects){sPS(d.projects);dbBulk("affaires",d.projects.map(p=>({id:p.ld,data:p})));}if(d.otifiq){sOE(d.otifiq);dbBulk("otifiq",d.otifiq.map(o=>({id:o.ld,data:o})));}if(d.planning){sPP(d.planning);dbBulk("planning",d.planning.map(p=>({id:p.id,data:p})));}sMsg("✓ "+((d.projects||[]).length)+" affaires");}catch(x){sMsg("⚠️ JSON invalide");}setTimeout(()=>sMsg(""),4000);};r.readAsText(f);e.target.value="";};
+  const procF=useCallback(f=>{if(!f)return;if(f.name.match(/\.xlsx?$/i)){sMsg("⚠️ xlsx non supporté");return;}const r=new FileReader();r.onload=ev=>{const imp=parseCSV(ev.target.result);if(!imp.length){sMsg("⚠️ Aucune affaire LD");return;}let upd=0,add=0,oA=0;const psRows=[],oeRows=[],ppRows=[];sPS(prev=>{const nx=[...prev];imp.forEach(i=>{const idx=nx.findIndex(x=>x.ld===i.ld);if(idx>=0){nx[idx]={...nx[idx],client:i.client||nx[idx].client,ville:i.ville||nx[idx].ville,dept:i.dept||nx[idx].dept,ca:i.ca||nx[idx].ca,dateMES:i.dateMES||nx[idx].dateMES,previPose:i.previPose||nx[idx].previPose,solde:i.solde};upd++;}else{nx.push({ld:i.ld,client:i.client,ville:i.ville,dept:i.dept||"",ca:i.ca,dateMES:i.dateMES,pvRecu:false,reserves:null,installateur:"",installateurLibre:"",previPose:i.previPose||0,reelPose:0,notes:"",solde:i.solde??false});add++;}});nx.forEach(p=>{if(imp.some(i=>i.ld===p.ld))psRows.push({id:p.ld,data:p});});dbBulk("affaires",psRows);return nx;});sOE(prev=>{const nx=[...prev];imp.forEach(i=>{if(!i.dateMES)return;const m=gML(i.dateMES);if(!m)return;const ex=nx.find(o=>o.ld===i.ld);if(!ex){nx.push({ld:i.ld,client:i.client||"",mois:m,onTime:false,sansReserves:false,fournisseur:"",fournisseurLibre:"",fournOT:false,fournIF:false,fournIQ:false,notes:""});oA++;}else if(ex.mois!==m){const idx=nx.indexOf(ex);nx[idx]={...ex,mois:m};}});nx.forEach(o=>{if(imp.some(i=>i.ld===o.ld))oeRows.push({id:o.ld,data:o});});dbBulk("otifiq",oeRows);return nx;});sPP(prev=>{const nx=[...prev];imp.forEach(i=>{if(!i.ld)return;const idx=nx.findIndex(x=>x.id===i.ld);if(idx>=0){nx[idx]={...nx[idx],client:i.client||nx[idx].client,montant:i.ca||nx[idx].montant};if(i.dateMES&&pD(i.dateMES)&&!nx[idx].dates.mise_en_service){nx[idx]={...nx[idx],dates:{...nx[idx].dates,mise_en_service:{debut:i.dateMES,fin:i.dateMES,done:false}}};}}else{const dates={};if(i.dateMES&&pD(i.dateMES))dates.mise_en_service={debut:i.dateMES,fin:i.dateMES,done:false};nx.push({id:i.ld,nom:(i.client||i.ld)+(i.ville?" · "+i.ville:""),client:i.client||"",montant:i.ca||0,dates});}});nx.forEach(p=>{if(imp.some(i=>i.ld===p.id))ppRows.push({id:p.id,data:p});});dbBulk("planning",ppRows);return nx;});sLI(new Date().toLocaleString("fr-FR",{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}));sMsg("✓ "+upd+" màj · "+add+" nouvelles · "+oA+" OTIFIQ");setTimeout(()=>{sMsg("");sSI(false);},6000);};r.readAsText(f,"UTF-8");},[dbBulk]);
   const hCSV=e=>{const f=e.target.files?.[0];if(f)procF(f);e.target.value="";};
   const doPrint=(land)=>{const s=document.createElement("style");s.id="pst";s.textContent="@page{size:A4 "+(land?"landscape":"portrait")+";margin:"+(land?"10mm":"12mm")+" 15mm;}";document.head.appendChild(s);const r=document.getElementById("AR"),c=document.getElementById("AC"),or=r&&r.style.cssText,oc=c&&c.style.cssText;if(r)r.style.cssText=(r.style.cssText||"")+";height:auto!important;overflow:visible!important;display:block!important";if(c)c.style.cssText=(c.style.cssText||"")+";height:auto!important;overflow:visible!important;flex:none!important;max-height:none!important";setTimeout(()=>{window.print();setTimeout(()=>{document.getElementById("pst")?.remove();if(r&&or!==undefined)r.style.cssText=or;if(c&&oc!==undefined)c.style.cssText=oc;sShowPrint(false);},600);},250);};
   const pvK=useMemo(()=>{const tot=PS.length,pv=PS.filter(p=>p.pvRecu).length,sr=PS.filter(p=>p.pvRecu&&!p.reserves).length;return{tot,pv,sr,tx:pv>0?Math.round(sr/pv*100):0};},[PS]);
   const pvMonths=useMemo(()=>[...new Set(PS.filter(p=>p.dateMES).map(p=>p.dateMES.substring(0,7)))].sort(),[PS]);
-  // ✅ FIX : plus de filtre date par défaut — toutes les affaires s'affichent
   const fp=useMemo(()=>{let d=[...PS];if(mFs.size>0)d=d.filter(p=>p.dateMES&&mFs.has(p.dateMES.substring(0,7)));if(pvF==="oui")d=d.filter(p=>p.pvRecu);if(pvF==="non")d=d.filter(p=>!p.pvRecu);if(rvF==="oui")d=d.filter(p=>p.reserves===true);if(rvF==="non")d=d.filter(p=>p.pvRecu&&p.reserves===false);if(rvF==="att")d=d.filter(p=>!p.pvRecu);if(srch)d=d.filter(p=>p.ld.toLowerCase().includes(srch.toLowerCase())||p.client.toLowerCase().includes(srch.toLowerCase())||p.ville.toLowerCase().includes(srch.toLowerCase()));d.sort((a,b)=>{let va=a[sF]??"",vb=b[sF]??"";if(sF==="ca"){va=+va;vb=+vb;}if(va<vb)return sD==="asc"?-1:1;if(va>vb)return sD==="asc"?1:-1;return 0;});const par=d.filter(p=>!isCh(p.ld)),chi=d.filter(p=>isCh(p.ld)),gr=[];par.forEach(p=>{gr.push(p);chi.filter(c=>glLd(c.ld)===p.ld).sort((a,b)=>a.ld.localeCompare(b.ld)).forEach(c=>gr.push(c));});chi.filter(c=>!par.some(p=>p.ld===glLd(c.ld))).forEach(c=>gr.push(c));return gr;},[PS,pvF,rvF,srch,mFs,sF,sD]);
   const oNow=new Date();
   const oK=useMemo(()=>{const e=OE.filter(o=>{const d=pM(o.mois);if(!d||gFY(d)!==cFY)return false;return inclFut||d<=oNow;});const tot=e.length,sr=e.filter(o=>o.sansReserves===true).length,ot=e.filter(o=>o.onTime===true).length,ft=e.filter(o=>o.fournisseur||o.fournisseurLibre).length,fq=e.filter(o=>(o.fournisseur||o.fournisseurLibre)&&o.fournIQ===true).length;return{tot,sr,tx:tot>0?Math.round(sr/tot*100):0,ot,ft,fq};},[OE,cFY,inclFut]);
@@ -311,15 +336,16 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
           <div><div style={{color:"#e2e8f0",fontSize:12,fontWeight:600}}>Dashboard Opérationnel</div><div style={{color:"#7fa4d8",fontSize:10,marginTop:1}}>FY26/27 · {PS.length} affaire(s)</div></div>
         </div>
         <div className="np" style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:"#7fa4d8"}}>{userEmail} · <strong style={{color:isAdmin?"#4ade80":isViewer?"#93c5fd":"#fbbf24"}}>{isAdmin?"Admin":isViewer?"Lecteur":"Collaborateur"}</strong></span>
           {lastI&&<span style={{fontSize:11,color:"#7fa4d8"}}>Màj : {lastI}</span>}
-          <button onClick={expJSON} style={{background:"#16a34a",color:"white",border:"none",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>⬇ JSON</button>
-          <label style={{background:"#7c3aed",color:"white",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>⬆ JSON<input type="file" accept=".json" onChange={impJSON} style={{display:"none"}}/></label>
-          <button onClick={()=>sSI(v=>!v)} style={{background:showI?"#1253b0":"#1a6ed8",color:"white",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>↑ Odoo CSV</button>
-          <button onClick={resetAll} title="Vider le cache et repartir de zéro" style={{background:"#dc2626",color:"white",border:"none",padding:"6px 10px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>🗑️ Reset</button>
+          {isAdmin&&<button onClick={expJSON} style={{background:"#16a34a",color:"white",border:"none",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>⬇ JSON</button>}
+          {isAdmin&&<label style={{background:"#7c3aed",color:"white",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>⬆ JSON<input type="file" accept=".json" onChange={impJSON} style={{display:"none"}}/></label>}
+          {isAdmin&&<button onClick={()=>sSI(v=>!v)} style={{background:showI?"#1253b0":"#1a6ed8",color:"white",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>↑ Odoo CSV</button>}
           <button onClick={()=>sShowPrint(true)} style={{background:"#475569",color:"white",border:"none",padding:"6px 14px",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>🖨️ PDF</button>
+          <button onClick={onLogout} style={{background:"#64748b",color:"white",border:"none",padding:"6px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Déconnexion</button>
         </div>
       </div>
-      {showI&&(<div className="np" style={{background:"#1e3a5f",padding:"12px 20px",borderBottom:"2px solid #2563eb"}}>
+      {showI&&isAdmin&&(<div className="np" style={{background:"#1e3a5f",padding:"12px 20px",borderBottom:"2px solid #2563eb"}}>
         <div style={{color:"#94a3b8",fontSize:11,marginBottom:8}}>Odoo → <strong style={{color:"#fbbf24"}}>CSV</strong> · Colonnes : <code style={{color:"#93c5fd"}}>Lead Number · Nom de la société · Ville · Total HT · Dont POSE · Date mise en service · Étape</code></div>
         <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"14px",borderRadius:8,cursor:"pointer",border:"2px dashed #3b5a8a",background:"#162d50"}}>
           <span style={{fontSize:20}}>📂</span><span style={{color:"#7fa4d8",fontSize:12,fontWeight:700}}>Glissez votre CSV — ou cliquez</span>
@@ -336,9 +362,8 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
         <div className="ph" style={{display:"none",alignItems:"center",gap:10,padding:"6px 0",borderBottom:"2px solid #0f2240",marginBottom:10,fontSize:12}}>
           <strong style={{color:"#0f2240"}}>VERTICAL</strong><span style={{flex:1}}/><span style={{color:"#64748b"}}>{new Date().toLocaleDateString("fr-FR")}</span>
         </div>
-
         {tab==="pv"&&(<div>
-          {PS.length===0&&(<div style={{textAlign:"center",padding:"60px 20px",color:"#94a3b8"}}><div style={{fontSize:48,marginBottom:12}}>📂</div><div style={{fontSize:16,fontWeight:700,color:"#64748b",marginBottom:8}}>Aucune affaire chargée</div><div style={{fontSize:13}}>Cliquez sur <strong style={{color:"#1a6ed8"}}>↑ Odoo CSV</strong></div></div>)}
+          {PS.length===0&&(<div style={{textAlign:"center",padding:"60px 20px",color:"#94a3b8"}}><div style={{fontSize:48,marginBottom:12}}>📂</div><div style={{fontSize:16,fontWeight:700,color:"#64748b",marginBottom:8}}>Aucune affaire chargée</div><div style={{fontSize:13}}>{isAdmin?<span>Cliquez sur <strong style={{color:"#1a6ed8"}}>↑ Odoo CSV</strong></span>:"En attente d'un import par un administrateur"}</div></div>)}
           {PS.length>0&&<div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
               {[{l:"Total affaires",v:pvK.tot,s:"FY26/27",c:"#2563eb"},{l:"PV reçus",v:pvK.pv,s:(pvK.tot-pvK.pv)+" en attente",c:"#2563eb"},{l:"Sans réserve",v:pvK.sr,s:"PV validés",c:"#16a34a"},{l:"Taux sans réserve",v:(pvK.tx+"%"),s:"Obj. 100%",c:pvK.tx>=90?"#16a34a":pvK.tx>=70?"#d97706":"#dc2626"}].map((k,ki)=>(
@@ -369,7 +394,7 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
                 {[["ld","N° LD"],["client","Client"],["ville","Ville"],["ca","CA HT"],["dateMES","Date MES"]].map(([f,l])=>(<th key={f} style={thS} onClick={()=>hSort(f)}>{l}{si(f)}</th>))}
                 <th style={thS}>Statut</th><th style={{...thS,minWidth:120}}>Installateur</th>
                 <th style={{...thS,textAlign:"right"}}>Prévi</th><th style={{...thS,textAlign:"right"}}>Réel</th>
-                <th style={thS}>Notes</th><th className="np" style={thS}>Action</th>
+                <th style={thS}>Notes</th>{!isViewer&&<th className="np" style={thS}>Action</th>}
               </tr></thead>
               <tbody>{fp.map(p=>{const chi=isCh(p.ld);const dTip=p.reelPose>0&&p.previPose>0?"Prévi: "+fmt(p.previPose)+" | Réel: "+fmt(p.reelPose)+" | Δ: "+(p.reelPose>=p.previPose?"+":"")+fmt(p.reelPose-p.previPose):"";return(
                 <tr key={p.ld} style={{background:p.reserves?"#fff5f5":p.pvRecu?"#f0fdf4":chi?"#fafbff":"white",opacity:p.solde?0.45:1,filter:p.solde?"grayscale(0.4)":"none"}}>
@@ -383,13 +408,12 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
                   <td style={{...tdS,textAlign:"right",color:"#64748b"}}>{p.previPose>0?fmt(p.previPose):"—"}</td>
                   <td style={{...tdS,textAlign:"right",fontWeight:p.reelPose>0?600:400,cursor:dTip?"help":""}} title={dTip}>{p.reelPose>0?fmt(p.reelPose):"—"}</td>
                   <td style={{...tdS,color:"#94a3b8",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}} title={p.notes}>{p.notes||"—"}</td>
-                  <td className="np" style={tdS}><button onClick={()=>sEp({...p})} style={{background:"#2563eb",color:"white",border:"none",padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Éditer</button></td>
+                  {!isViewer&&<td className="np" style={tdS}><button onClick={()=>sEp({...p})} style={{background:"#2563eb",color:"white",border:"none",padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>Éditer</button></td>}
                 </tr>
               );})}</tbody>
             </table></div></Card>
           </div>}
         </div>)}
-
         {tab==="otifiq"&&(<div>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
             <div style={{fontSize:11,color:"#64748b",fontWeight:700}}>EXERCICE EN COURS : {cFY} (01/04 – 31/03)</div>
@@ -449,17 +473,17 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
                       <thead><tr><th style={thS}>N° LD</th><th style={thS}>Client</th><th style={thS}>Mois</th><th style={{...thS,textAlign:"center",background:"#eff6ff",minWidth:70}}>On Time</th><th style={{...thS,textAlign:"center",background:"#eff6ff",minWidth:80}}>Sans Rés.</th><th style={{...thS,background:"#f0fdf4",minWidth:130}}>Fournisseur</th><th style={{...thS,textAlign:"center",background:"#f0fdf4",minWidth:45}}>OT</th><th style={{...thS,textAlign:"center",background:"#f0fdf4",minWidth:45}}>IF</th><th style={{...thS,textAlign:"center",background:"#f0fdf4",minWidth:45}}>IQ</th><th style={thS}>Bilan</th><th style={{...thS,minWidth:150}}>Notes</th></tr></thead>
                       <tbody>{es.map(o=>{
                         const gok=o.onTime===true&&o.sansReserves===true,hf=!!(o.fournisseur||o.fournisseurLibre),fok=!hf||(o.fournOT===true&&o.fournIF===true&&o.fournIQ===true);
-                        const chk=(v,f)=><input type="checkbox" checked={v===true} onChange={e=>upO(o.ld,f,e.target.checked)} style={{width:15,height:15,cursor:"pointer",accentColor:"#2563eb"}}/>;
+                        const chk=(v,f)=><input type="checkbox" checked={v===true} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,f,e.target.checked)} style={{width:15,height:15,cursor:canEditOtifiq?"pointer":"not-allowed",accentColor:"#2563eb"}}/>;
                         return(
                           <tr key={o.ld} style={{borderBottom:"1px solid #f1f5f9",background:(gok&&fok)?"#f0fdf4":"#fff5f5"}}>
                             <td style={{...tdS,fontWeight:700,color:"#2563eb",whiteSpace:"nowrap"}}>{o.ld}</td>
                             <td style={{...tdS,maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}} title={o.client}>{o.client||"—"}</td>
                             <td style={{...tdS,color:"#64748b",fontSize:11}}>{o.mois}</td>
                             <td style={{...tdS,textAlign:"center"}}>{chk(o.onTime,"onTime")}</td><td style={{...tdS,textAlign:"center"}}>{chk(o.sansReserves,"sansReserves")}</td>
-                            <td style={{...tdS,padding:"4px 8px"}}><select value={o.fournisseur||""} onChange={e=>upO(o.ld,"fournisseur",e.target.value)} style={{padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}><option value="">—</option>{FNL.map(f=><option key={f} value={f}>{f}</option>)}<option value="Autre">Autre...</option></select>{o.fournisseur==="Autre"&&<input value={o.fournisseurLibre||""} onChange={e=>upO(o.ld,"fournisseurLibre",e.target.value)} placeholder="Fournisseur..." style={{marginTop:2,padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}/>}</td>
+                            <td style={{...tdS,padding:"4px 8px"}}><select value={o.fournisseur||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseur",e.target.value)} style={{padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}><option value="">—</option>{FNL.map(f=><option key={f} value={f}>{f}</option>)}<option value="Autre">Autre...</option></select>{o.fournisseur==="Autre"&&<input value={o.fournisseurLibre||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseurLibre",e.target.value)} placeholder="Fournisseur..." style={{marginTop:2,padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}/>}</td>
                             <td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournOT,"fournOT"):<span style={{color:"#e2e8f0"}}>—</span>}</td><td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournIF,"fournIF"):<span style={{color:"#e2e8f0"}}>—</span>}</td><td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournIQ,"fournIQ"):<span style={{color:"#e2e8f0"}}>—</span>}</td>
                             <td style={tdS}>{(gok&&fok)?<span style={{background:"#dcfce7",color:"#14532d",padding:"2px 6px",borderRadius:10,fontSize:10,fontWeight:700}}>✓ OK</span>:<span style={{background:"#fee2e2",color:"#991b1b",padding:"2px 6px",borderRadius:10,fontSize:10,fontWeight:700}}>⚠ Non OK</span>}</td>
-                            <td style={{...tdS,padding:"4px 8px"}}><input value={o.notes||""} onChange={e=>upO(o.ld,"notes",e.target.value)} placeholder="Notes..." style={{padding:"2px 6px",border:"1px solid transparent",borderRadius:4,fontSize:11,width:"100%",background:"transparent"}} onFocus={e=>e.target.style.borderColor="#e2e8f0"} onBlur={e=>e.target.style.borderColor="transparent"}/></td>
+                            <td style={{...tdS,padding:"4px 8px"}}><input value={o.notes||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"notes",e.target.value)} placeholder="Notes..." style={{padding:"2px 6px",border:"1px solid transparent",borderRadius:4,fontSize:11,width:"100%",background:"transparent"}} onFocus={e=>e.target.style.borderColor="#e2e8f0"} onBlur={e=>e.target.style.borderColor="transparent"}/></td>
                           </tr>
                         );
                       })}</tbody>
@@ -470,7 +494,6 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
             })}
           </div>}
         </div>)}
-
         {tab==="prev"&&(<div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
             {[{l:"CA pipeline FY",v:fmt(totF),s:"Obj. FY : "+fmt(OBJ_T),c:"#2563eb"},{l:"Facturé réel FY (Soldé)",v:fmt(totR),s:Math.round(totR/OBJ_T*100)+"% de l'objectif",c:totR>=OBJ_T?"#16a34a":"#2563eb"},{l:"Réceptions ce mois",v:(fd.find(m=>m.mois===cML)||{nb:0}).nb,s:cML,c:"#7c3aed"},{l:"CA prévu ce mois",v:fmt((fd.find(m=>m.mois===cML)||{ca:0}).ca),s:"obj. "+fmt((fd.find(m=>m.mois===cML)||{objectif:0}).objectif),c:"#7c3aed"}].map(k=>(
@@ -513,9 +536,9 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
             <span style={{fontSize:13,fontWeight:700,color:"#1e293b"}}>🗓️ Planning Gantt</span>
             <span style={{fontSize:11,color:"#94a3b8"}}>{PP.length} projet(s)</span>
             <div style={{flex:1}}/>
-            <button onClick={()=>sPAdd(v=>!v)} style={{background:pAdd?"#6b7280":"#f97316",color:"white",border:"none",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>{pAdd?"✕ Annuler":"+ Nouveau projet"}</button>
+            {!isViewer&&<button onClick={()=>sPAdd(v=>!v)} style={{background:pAdd?"#6b7280":"#f97316",color:"white",border:"none",padding:"5px 12px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer"}}>{pAdd?"✕ Annuler":"+ Nouveau projet"}</button>}
           </div>
-          {pAdd&&(<div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:8,padding:"12px 14px",marginBottom:12}}>
+          {pAdd&&!isViewer&&(<div style={{background:"white",border:"1px solid #e5e7eb",borderRadius:8,padding:"12px 14px",marginBottom:12}}>
             <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#374151"}}>Nouveau projet</div>
             <div style={{display:"grid",gap:8,gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))"}}>
               {[{k:"nom",l:"Nom *"},{k:"client",l:"Client"},{k:"id",l:"Référence"},{k:"montant",l:"Montant HT €",t:"number"}].map(f=>(
@@ -525,15 +548,14 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
             </div>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:10}}>
               <button onClick={()=>sPAdd(false)} style={{padding:"6px 14px",border:"1px solid #e2e8f0",borderRadius:6,background:"white",fontSize:12,cursor:"pointer"}}>Annuler</button>
-              <button onClick={()=>{if(!pNew.nom)return;sPP(prev=>[...prev,{id:pNew.id||`VM-${new Date().getFullYear()}-${String(prev.length+1).padStart(3,"0")}`,nom:pNew.nom,client:pNew.client,montant:parseFloat(pNew.montant)||0,dates:{}}]);sPNew({id:"",nom:"",client:"",montant:""});sPAdd(false);}} style={{padding:"6px 14px",background:"#f97316",color:"white",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>Créer</button>
+              <button onClick={()=>{if(!pNew.nom)return;const np={id:pNew.id||`VM-manual-${PP.length+1}`,nom:pNew.nom,client:pNew.client,montant:parseFloat(pNew.montant)||0,dates:{}};sPP(prev=>[...prev,np]);dbUpsert("planning",np.id,np);sPNew({id:"",nom:"",client:"",montant:""});sPAdd(false);}} style={{padding:"6px 14px",background:"#f97316",color:"white",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>Créer</button>
             </div>
           </div>)}
           {PP.length===0&&!pAdd&&(<div style={{textAlign:"center",padding:"60px 20px",color:"#94a3b8",background:"white",borderRadius:8,border:"1px solid #e2e8f0"}}><div style={{fontSize:48,marginBottom:12}}>🗓️</div><div style={{fontSize:16,fontWeight:700,color:"#64748b",marginBottom:8}}>Aucun projet</div><div style={{fontSize:13}}>Importez votre CSV Odoo ou créez un projet manuellement</div></div>)}
-          {PP.length>0&&<Card><CC s={{padding:"14px 16px"}}><PG ps={PP} onU={upPl}/></CC></Card>}
+          {PP.length>0&&<Card><CC s={{padding:"14px 16px"}}><PG ps={PP} onU={upPl} canEdit={!isViewer} canDelete={isAdmin}/></CC></Card>}
         </div>)}
       </div>
-
-      {ep&&(<div className="np" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      {ep&&!isViewer&&(<div className="np" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{background:"white",borderRadius:12,padding:24,maxWidth:440,width:"90%",maxHeight:"80vh",overflow:"auto"}}>
           <h2 style={{fontSize:16,fontWeight:700,marginBottom:4}}>{ep.ld}</h2><p style={{fontSize:12,color:"#64748b",marginBottom:16}}>{ep.client}</p>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -555,7 +577,6 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
           </div>
         </div>
       </div>)}
-
       {showPrint&&(<div className="np" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <div style={{background:"white",borderRadius:12,padding:24,maxWidth:320,width:"90%"}}>
           <h2 style={{fontSize:15,fontWeight:700,marginBottom:8}}>🖨️ PDF — Onglet actif</h2>
@@ -570,7 +591,63 @@ useEffect(()=>{fetch(`https://api.jsonbin.io/v3/b/${JBIN_ID}/latest`,{headers:{"
     </div>
   );
 }
-try{ReactDOM.createRoot(document.getElementById("root")).render(<App/>);}catch(e){showErr("Erreur React: "+e.message+"\n"+e.stack);}
+// ═══════════════════════════════════════════════════════════════
+// GATE — Login Supabase + récupération du rôle
+// ═══════════════════════════════════════════════════════════════
+function Login(){
+  const [mode,sMode]=useState("in"); // "in" = connexion, "up" = création de compte
+  const [em,sEm]=useState(""),[pw,sPw]=useState(""),[busy,sBusy]=useState(false),[err,sErr]=useState(""),[ok,sOk]=useState("");
+  const isUp=mode==="up";
+  const submit=async e=>{e.preventDefault();sErr("");sOk("");sBusy(true);
+    if(isUp){
+      if(pw.length<6){sErr("Mot de passe : 6 caractères minimum");sBusy(false);return;}
+      const{data,error}=await supa.auth.signUp({email:em,password:pw});
+      if(error)sErr(error.message==="User already registered"?"Ce compte existe déjà":error.message);
+      else if(!data.session)sOk("✓ Compte créé. Vérifie ta boîte mail pour confirmer, puis connecte-toi.");
+    }else{
+      const{error}=await supa.auth.signInWithPassword({email:em,password:pw});
+      if(error)sErr("Identifiants incorrects");
+    }
+    sBusy(false);
+  };
+  const toggle=()=>{sMode(isUp?"in":"up");sErr("");sOk("");};
+  return <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0f2240"}}>
+    <form onSubmit={submit} style={{background:"white",borderRadius:12,padding:32,width:340,boxShadow:"0 10px 40px rgba(0,0,0,.3)"}}>
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{fontWeight:900,fontSize:22,letterSpacing:4,color:"#0f2240"}}>VERTICAL</div>
+        <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{isUp?"Créer un compte":"Dashboard Opérationnel"}</div>
+      </div>
+      <input type="email" placeholder="Email" value={em} onChange={e=>sEm(e.target.value)} required style={{width:"100%",padding:"10px 12px",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,marginBottom:10}}/>
+      <input type="password" placeholder={isUp?"Mot de passe (6 car. min.)":"Mot de passe"} value={pw} onChange={e=>sPw(e.target.value)} required style={{width:"100%",padding:"10px 12px",border:"1px solid #e2e8f0",borderRadius:8,fontSize:14,marginBottom:14}}/>
+      {err&&<div style={{background:"#fee2e2",color:"#991b1b",padding:"8px 12px",borderRadius:6,fontSize:12,marginBottom:12,fontWeight:600}}>{err}</div>}
+      {ok&&<div style={{background:"#dcfce7",color:"#14532d",padding:"8px 12px",borderRadius:6,fontSize:12,marginBottom:12,fontWeight:600}}>{ok}</div>}
+      <button type="submit" disabled={busy} style={{width:"100%",padding:"11px",background:isUp?"#16a34a":"#1a6ed8",color:"white",border:"none",borderRadius:8,fontSize:14,fontWeight:700,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Veuillez patienter...":(isUp?"Créer mon compte":"Se connecter")}</button>
+      <div style={{textAlign:"center",marginTop:16,fontSize:13,color:"#64748b"}}>
+        {isUp?"Déjà un compte ? ":"Pas encore de compte ? "}
+        <span onClick={toggle} style={{color:"#1a6ed8",fontWeight:700,cursor:"pointer",textDecoration:"underline"}}>{isUp?"Se connecter":"Créer un compte"}</span>
+      </div>
+    </form>
+  </div>;
+}
+function Root(){
+  const [session,sSession]=useState(undefined);
+  const [role,sRole]=useState(null);
+  useEffect(()=>{if(!supa)return;
+    supa.auth.getSession().then(({data})=>sSession(data.session||null));
+    const{data:sub}=supa.auth.onAuthStateChange((_e,s)=>sSession(s||null));
+    return()=>sub.subscription.unsubscribe();
+  },[]);
+  useEffect(()=>{if(!session){sRole(null);return;}(async()=>{
+    const{data}=await supa.from("profiles").select("role").eq("id",session.user.id).single();
+    sRole(data?.role||"collaborateur");
+  })();},[session]);
+  if(!supa)return <div style={{padding:40}}>Supabase non configuré.</div>;
+  if(session===undefined)return <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#64748b"}}>Chargement…</div>;
+  if(!session)return <Login/>;
+  if(role===null)return <div style={{height:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#64748b"}}>Vérification du rôle…</div>;
+  return <App role={role} userEmail={session.user.email} onLogout={()=>supa.auth.signOut()}/>;
+}
+try{ReactDOM.createRoot(document.getElementById("root")).render(<Root/>);}catch(e){showErr("Erreur React: "+e.message+"\n"+e.stack);}
 </script>
 </body>
 </html>
