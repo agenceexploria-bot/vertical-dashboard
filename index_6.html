@@ -276,13 +276,18 @@ function App({role,userEmail,onLogout}){
     }catch(e){sMsg("⚠️ Chargement Supabase KO");}
     sLoaded(true);
   })();},[]);
-  // ─── Temps réel : recharge la table concernée à chaque changement distant ───
+  // ─── Temps réel : applique UNIQUEMENT la ligne modifiée (pas de rechargement complet) ───
   useEffect(()=>{if(!supa)return;
-    const reload=async(tbl,setter)=>{const{data}=await supa.from(tbl).select("*");if(data)setter(data.map(r=>r.data));};
+    const applyRT=(setter,keyOf)=>payload=>setter(prev=>{
+      if(payload.eventType==="DELETE"){const id=payload.old&&payload.old.id;return prev.filter(r=>keyOf(r)!==id);}
+      const row=payload.new&&payload.new.data;if(!row)return prev;
+      const id=payload.new.id,i=prev.findIndex(r=>keyOf(r)===id);
+      if(i<0)return[...prev,row];const nx=prev.slice();nx[i]=row;return nx;
+    });
     const ch=supa.channel("rt")
-      .on("postgres_changes",{event:"*",schema:"public",table:"affaires"},()=>reload("affaires",sPS))
-      .on("postgres_changes",{event:"*",schema:"public",table:"otifiq"},()=>reload("otifiq",sOE))
-      .on("postgres_changes",{event:"*",schema:"public",table:"planning"},()=>reload("planning",sPP))
+      .on("postgres_changes",{event:"*",schema:"public",table:"affaires"},applyRT(sPS,r=>r.ld))
+      .on("postgres_changes",{event:"*",schema:"public",table:"otifiq"},applyRT(sOE,r=>r.ld))
+      .on("postgres_changes",{event:"*",schema:"public",table:"planning"},applyRT(sPP,r=>r.id))
       .subscribe();
     return()=>{supa.removeChannel(ch);};
   },[]);
@@ -296,7 +301,8 @@ function App({role,userEmail,onLogout}){
   const txFY=k=>sXFY(p=>{const n=new Set(p);n.has(k)?n.delete(k):n.add(k);return n;});
   const tgM=m=>sMFs(p=>{const n=new Set(p);n.has(m)?n.delete(m):n.add(m);return n;});
   const tgOM=m=>sOMFs(p=>{const n=new Set(p);n.has(m)?n.delete(m):n.add(m);return n;});
-  const upO=(ld,f,v)=>sOE(p=>{const nx=p.map(e=>e.ld===ld?{...e,[f]:v}:e);const row=nx.find(e=>e.ld===ld);if(row)dbUpsert("otifiq",ld,row);return nx;});
+  const wTimers=useRef({}); // minuteurs de debounce par ligne
+  const upO=(ld,f,v,deb)=>sOE(p=>{const nx=p.map(e=>e.ld===ld?{...e,[f]:v}:e);const row=nx.find(e=>e.ld===ld);if(row){if(deb){const k="otifiq:"+ld;clearTimeout(wTimers.current[k]);wTimers.current[k]=setTimeout(()=>dbUpsert("otifiq",ld,row),500);}else dbUpsert("otifiq",ld,row);}return nx;});
   const upMES=(ld,d)=>{sPS(prev=>{const nx=prev.map(p=>p.ld===ld?{...p,dateMES:d}:p);const row=nx.find(p=>p.ld===ld);if(row)dbUpsert("affaires",ld,row);return nx;});const m=gML(d);if(m)sOE(prev=>{const nx=prev.map(o=>o.ld===ld?{...o,mois:m}:o);const row=nx.find(o=>o.ld===ld);if(row)dbUpsert("otifiq",ld,row);return nx;});sPP(prev=>{const nx=prev.map(p=>p.id===ld?{...p,dates:{...p.dates,mise_en_service:{...(p.dates.mise_en_service||{}),debut:d,fin:d}}}:p);const row=nx.find(p=>p.id===ld);if(row)dbUpsert("planning",ld,row);return nx;});};
   const saveE=u=>{sPS(p=>p.map(x=>x.ld===u.ld?u:x));dbUpsert("affaires",u.ld,u);sEp(null);};
   const hSort=f=>{if(sF===f)sSD(d=>d==="asc"?"desc":"asc");else{sSF(f);sSD("asc");}};
@@ -481,10 +487,10 @@ function App({role,userEmail,onLogout}){
                             <td style={{...tdS,maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}} title={o.client}>{o.client||"—"}</td>
                             <td style={{...tdS,color:"#64748b",fontSize:11}}>{o.mois}</td>
                             <td style={{...tdS,textAlign:"center"}}>{chk(o.onTime,"onTime")}</td><td style={{...tdS,textAlign:"center"}}>{chk(o.sansReserves,"sansReserves")}</td>
-                            <td style={{...tdS,padding:"4px 8px"}}><select value={o.fournisseur||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseur",e.target.value)} style={{padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}><option value="">—</option>{FNL.map(f=><option key={f} value={f}>{f}</option>)}<option value="Autre">Autre...</option></select>{o.fournisseur==="Autre"&&<input value={o.fournisseurLibre||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseurLibre",e.target.value)} placeholder="Fournisseur..." style={{marginTop:2,padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}/>}</td>
+                            <td style={{...tdS,padding:"4px 8px"}}><select value={o.fournisseur||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseur",e.target.value)} style={{padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}><option value="">—</option>{FNL.map(f=><option key={f} value={f}>{f}</option>)}<option value="Autre">Autre...</option></select>{o.fournisseur==="Autre"&&<input value={o.fournisseurLibre||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"fournisseurLibre",e.target.value,true)} placeholder="Fournisseur..." style={{marginTop:2,padding:"2px 4px",border:"1px solid #e2e8f0",borderRadius:4,fontSize:11,width:"100%"}}/>}</td>
                             <td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournOT,"fournOT"):<span style={{color:"#e2e8f0"}}>—</span>}</td><td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournIF,"fournIF"):<span style={{color:"#e2e8f0"}}>—</span>}</td><td style={{...tdS,textAlign:"center"}}>{hf?chk(o.fournIQ,"fournIQ"):<span style={{color:"#e2e8f0"}}>—</span>}</td>
                             <td style={tdS}>{(gok&&fok)?<span style={{background:"#dcfce7",color:"#14532d",padding:"2px 6px",borderRadius:10,fontSize:10,fontWeight:700}}>✓ OK</span>:<span style={{background:"#fee2e2",color:"#991b1b",padding:"2px 6px",borderRadius:10,fontSize:10,fontWeight:700}}>⚠ Non OK</span>}</td>
-                            <td style={{...tdS,padding:"4px 8px"}}><input value={o.notes||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"notes",e.target.value)} placeholder="Notes..." style={{padding:"2px 6px",border:"1px solid transparent",borderRadius:4,fontSize:11,width:"100%",background:"transparent"}} onFocus={e=>e.target.style.borderColor="#e2e8f0"} onBlur={e=>e.target.style.borderColor="transparent"}/></td>
+                            <td style={{...tdS,padding:"4px 8px"}}><input value={o.notes||""} disabled={!canEditOtifiq} onChange={e=>upO(o.ld,"notes",e.target.value,true)} placeholder="Notes..." style={{padding:"2px 6px",border:"1px solid transparent",borderRadius:4,fontSize:11,width:"100%",background:"transparent"}} onFocus={e=>e.target.style.borderColor="#e2e8f0"} onBlur={e=>e.target.style.borderColor="transparent"}/></td>
                           </tr>
                         );
                       })}</tbody>
