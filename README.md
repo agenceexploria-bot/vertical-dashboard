@@ -1,19 +1,20 @@
 # Vertical – Dashboard
 
-Dashboard opérationnel interne pour le suivi des affaires, de l'OTIFIQ et du planning de production/installation des monte-charges **Vertical** (Actiwork) — ticket **MB03**.
+Dashboard opérationnel interne pour le suivi des affaires, de l'OTIFIQ et du planning de production/installation des monte-charges Vertical (Actiwork) — ticket MB03.
 
 ## Architecture
 
 L'application tient dans un fichier HTML unique (`index_12.html`) : React, Chart.js et PapaParse sont chargés via CDN, et le JSX est transpilé dans le navigateur par Babel — aucune étape de build n'est nécessaire.
 
-Le backend est **Supabase** :
+Le backend est Supabase :
+
 - **Auth** pour l'authentification par email/mot de passe ;
-- **Postgres** avec trois tables de données (`affaires`, `otifiq`, `planning`), chacune au format `id` (texte) + `data` (`jsonb`) — une ligne = un enregistrement, ce qui corrige le bug d'écrasement multi-utilisateur qu'entraînait un stockage en un seul bloc JSON ;
-- **RLS (Row Level Security)** pour appliquer les droits par rôle directement en base ;
+- **Postgres** avec trois tables de données (`affaires`, `otifiq`, `planning`), chacune au format `id` (texte) + `data` (jsonb) — une ligne = un enregistrement, ce qui corrige le bug d'écrasement multi-utilisateur qu'entraînait un stockage en un seul bloc JSON ;
+- **RLS** (Row Level Security) pour appliquer les droits par rôle directement en base ;
 - **Realtime** pour synchroniser les modifications entre utilisateurs connectés ;
 - une **Edge Function** (`delete-user`) pour la suppression définitive d'un compte.
 
-L'ensemble est hébergé sur **Netlify**.
+L'ensemble est hébergé sur Netlify.
 
 ## Structure du dépôt
 
@@ -35,18 +36,38 @@ L'ensemble est hébergé sur **Netlify**.
 
 ## Déploiement sur un projet Supabase neuf
 
-1. Créer un nouveau projet sur [Supabase](https://supabase.com).
+1. Créer un nouveau projet sur Supabase.
 2. Ouvrir **SQL Editor** et exécuter l'intégralité de `setup.sql`.
-3. Déployer l'Edge Function sous le nom exact `delete-user` en y collant le contenu de `index.ts` (Supabase → **Edge Functions** → *Deploy a new function*).
-4. Désactiver la confirmation d'email : **Authentication** → **Sign In / Providers** → **Email** → décocher *Confirm email*.
-5. Renseigner les constantes `SUPA_URL` et `SUPA_ANON` en tête de `index_12.html` avec l'URL du projet et la clé publique *anon* (Supabase → **Project Settings** → **API**).
+3. Déployer l'Edge Function sous le nom exact `delete-user` en y collant le contenu de `index.ts` (Supabase → Edge Functions → Deploy a new function).
+4. Désactiver la confirmation d'email : Authentication → Sign In / Providers → Email → décocher **Confirm email**.
+5. Renseigner les constantes `SUPA_URL` et `SUPA_ANON` en tête de `index_12.html` avec l'URL du projet et la clé publique anon (Supabase → Project Settings → API).
 6. Créer le premier compte via l'écran d'inscription, puis le passer administrateur en SQL :
    ```sql
    update public.profiles set role = 'admin' where email = '...';
    ```
 7. Déposer `index_12.html` sur l'hébergeur (Netlify).
 
+## Redéployer le site sur un nouvel hébergeur
+
+Le site étant un fichier HTML unique sans étape de build, le redéploiement sur un autre hébergeur (Vercel, Netlify, autre) se limite à publier ce fichier — le backend Supabase n'a pas besoin d'être touché s'il reste le même.
+
+1. **Récupérer le fichier à jour.** Cloner ou télécharger le dépôt, s'assurer que `index_12.html` contient bien les bonnes valeurs de `SUPA_URL` et `SUPA_ANON` en tête de fichier (celles du projet Supabase en cours d'utilisation).
+2. **Créer un compte sur le nouvel hébergeur** (ex. Vercel) et s'y connecter.
+3. **Créer un nouveau projet / site.**
+   - Sur Vercel : "Add New… → Project", puis soit importer le dépôt GitHub directement, soit choisir "Deploy without Git" et glisser le fichier.
+   - Sur un autre hébergeur type Netlify/Cloudflare Pages : équivalent via "New site" ou "Create project".
+4. **Configurer le déploiement comme un site statique.**
+   - Aucune commande de build à renseigner (pas de `npm run build`).
+   - Dossier de sortie/racine : celui contenant `index_12.html`.
+   - Si l'hébergeur exige un fichier `index.html` précis à la racine, renommer une copie de `index_12.html` en `index.html` avant déploiement (ou configurer une redirection selon les options de l'hébergeur).
+5. **Lancer le déploiement.** L'hébergeur fournit une URL de test (ex. `xxx.vercel.app`) — vérifier que le site charge et que la connexion Supabase fonctionne (tenter une connexion avec un compte existant).
+6. **Brancher un nom de domaine** (optionnel) : dans les paramètres du projet côté hébergeur, ajouter le domaine personnalisé et suivre les instructions de configuration DNS fournies.
+7. **Vérifier les policies CORS Supabase si besoin.** Par défaut Supabase autorise toutes les origines pour l'API REST/Auth ; si des restrictions ont été ajoutées, s'assurer que la nouvelle URL du site y est autorisée.
+8. **Désactiver/supprimer l'ancien déploiement** une fois le nouveau validé, pour éviter d'avoir deux versions actives du site.
+
+> Le fichier étant statique, il n'y a jamais besoin de configurer de variables d'environnement côté hébergeur : les clés Supabase sont déjà en dur dans `index_12.html` (voir notes de sécurité ci-dessous).
+
 ## Notes de sécurité
 
-- La clé `SUPA_ANON` présente dans `index_12.html` est publique par conception : la sécurité de l'application repose sur les **policies RLS** définies dans `setup.sql`, pas sur la confidentialité de cette clé.
+- La clé `SUPA_ANON` présente dans `index_12.html` est publique par conception : la sécurité de l'application repose sur les policies RLS définies dans `setup.sql`, pas sur la confidentialité de cette clé.
 - La clé `service_role` ne doit **jamais** être commitée dans ce dépôt : elle n'est utilisée que côté serveur, dans l'Edge Function `delete-user`, où elle est fournie automatiquement par l'environnement Supabase.
